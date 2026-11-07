@@ -15,6 +15,7 @@ const fileUtils = require('./utils/fileUtils')
 const { sweepUploadTempFiles } = require('./utils/fileUploadMiddleware')
 const { toNumber } = require('./utils/index')
 const { getRequestOrigin } = require('./utils/requestUtils')
+const restoreMaintenance = require('./utils/restoreMaintenance')
 const Logger = require('./Logger')
 
 const Auth = require('./Auth')
@@ -259,6 +260,9 @@ class Server {
     await this.init()
 
     const app = express()
+
+    // Answers 503 while a Postgres restore runs on this instance
+    app.use(restoreMaintenance.middleware)
 
     app.use((req, res, next) => {
       if (!global.ServerSettings.allowIframe) {
@@ -526,14 +530,17 @@ class Server {
 
     // Remove series from hide from continue listening that no longer exist
     try {
-      const users = await Database.sequelize.query(`SELECT u.id, u.username, u.extraData, json_group_array(value) AS seriesIdsToRemove FROM users u, json_each(u.extraData->"seriesHideFromContinueListening") LEFT JOIN series se ON se.id = value WHERE se.id IS NULL GROUP BY u.id;`, {
-        model: Database.userModel,
-        type: Sequelize.QueryTypes.SELECT
-      })
+      const users = await Database.userModel.findAll({ attributes: ['id', 'username', 'extraData'] })
       for (const user of users) {
-        const extraData = JSON.parse(user.extraData)
-        const existingSeriesIds = extraData.seriesHideFromContinueListening
-        const seriesIdsToRemove = JSON.parse(user.dataValues.seriesIdsToRemove)
+        const extraData = typeof user.extraData === 'string' ? JSON.parse(user.extraData || '{}') : user.extraData || {}
+        const existingSeriesIds = Array.isArray(extraData.seriesHideFromContinueListening) ? extraData.seriesHideFromContinueListening : []
+        if (!existingSeriesIds.length) continue
+
+        const existingSeries = await Database.seriesModel.findAll({ attributes: ['id'], where: { id: { [Sequelize.Op.in]: existingSeriesIds } } })
+        const existingSeriesSet = new Set(existingSeries.map((series) => series.id))
+        const seriesIdsToRemove = existingSeriesIds.filter((seriesId) => !existingSeriesSet.has(seriesId))
+        if (!seriesIdsToRemove.length) continue
+
         Logger.info(`[Server] Found ${seriesIdsToRemove.length} non-existent series in seriesHideFromContinueListening for user "${user.username}" - Removing (${seriesIdsToRemove.join(',')})`)
         const newExtraData = {
           ...extraData,

@@ -5,6 +5,7 @@ const parseNameString = require('../utils/parsers/parseNameString')
 const htmlSanitizer = require('../utils/htmlSanitizer')
 const libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
 const SocketAuthority = require('../SocketAuthority')
+const { dialectFor } = require('../utils/dialectAdapter')
 
 /**
  * @typedef EBookFileObject
@@ -147,7 +148,7 @@ class Book extends Model {
         },
         title: DataTypes.STRING,
         titleIgnorePrefix: DataTypes.STRING,
-        subtitle: DataTypes.STRING,
+        subtitle: DataTypes.TEXT,
         publishedYear: DataTypes.STRING,
         publishedDate: DataTypes.STRING,
         publisher: DataTypes.STRING,
@@ -173,10 +174,7 @@ class Book extends Model {
         indexes: [
           {
             fields: [
-              {
-                name: 'title',
-                collate: 'NOCASE'
-              }
+              dialectFor(sequelize).indexField('title')
             ]
           },
           // {

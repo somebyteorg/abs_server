@@ -4,7 +4,8 @@ const { LRUCache } = require('lru-cache')
 
 const Logger = require('../Logger')
 const SocketAuthority = require('../SocketAuthority')
-const { isNullOrNaN } = require('../utils')
+const { isNullOrNaN, isUUID } = require('../utils')
+const { dialectFor } = require('../utils/dialectAdapter')
 const TokenManager = require('../auth/TokenManager')
 
 class UserCache {
@@ -18,12 +19,16 @@ class UserCache {
   }
 
   getByEmail(email) {
-    const user = this.cache.find((u) => u.email === email)
+    if (!email) return null
+    const normalizedEmail = email.toLowerCase()
+    const user = this.cache.find((u) => u.email && u.email.toLowerCase() === normalizedEmail)
     return user
   }
 
   getByUsername(username) {
-    const user = this.cache.find((u) => u.username === username)
+    if (!username) return null
+    const normalizedUsername = username.toLowerCase()
+    const user = this.cache.find((u) => u.username && u.username.toLowerCase() === normalizedUsername)
     return user
   }
 
@@ -348,11 +353,13 @@ class User extends Model {
   static async getUserByUsername(username) {
     if (!username) return null
 
-    const cachedUser = userCache.getByUsername(username)
+    const normalizedUsername = username.toLowerCase()
+
+    const cachedUser = userCache.getByUsername(normalizedUsername)
     if (cachedUser) return cachedUser
 
     const user = await this.findOne({
-      where: sequelize.where(sequelize.fn('lower', sequelize.col('username')), username.toLowerCase()),
+      where: sequelize.where(sequelize.fn('LOWER', sequelize.col('username')), normalizedUsername),
       include: this.sequelize.models.mediaProgress
     })
 
@@ -369,11 +376,13 @@ class User extends Model {
   static async getUserByEmail(email) {
     if (!email) return null
 
-    const cachedUser = userCache.getByEmail(email)
+    const normalizedEmail = email.toLowerCase()
+
+    const cachedUser = userCache.getByEmail(normalizedEmail)
     if (cachedUser) return cachedUser
 
     const user = await this.findOne({
-      where: sequelize.where(sequelize.fn('lower', sequelize.col('email')), email.toLowerCase()),
+      where: sequelize.where(sequelize.fn('LOWER', sequelize.col('email')), normalizedEmail),
       include: this.sequelize.models.mediaProgress
     })
 
@@ -414,12 +423,22 @@ class User extends Model {
     const cachedUser = userCache.getById(userId) || userCache.getByOldId(userId)
     if (cachedUser) return cachedUser
 
-    const user = await this.findOne({
-      where: {
-        [sequelize.Op.or]: [{ id: userId }, { 'extraData.oldUserId': userId }]
-      },
-      include: this.sequelize.models.mediaProgress
-    })
+    let user = null
+    // Postgres rejects a non-UUID value compared with the uuid id column (22P02), so only use the primary
+    // key when the value is UUID-shaped. Legacy ids then fall through to the extraData lookup below.
+    if (isUUID(userId)) {
+      user = await this.findByPk(userId, {
+        include: this.sequelize.models.mediaProgress
+      })
+    }
+
+    if (!user) {
+      // Qualify the JSON column: mediaProgress also has extraData, and the Postgres schema stores it lower-case.
+      user = await this.findOne({
+        where: sequelize.where(sequelize.literal(dialectFor(this.sequelize).jsonPathTextAt(this.name, 'extraData', 'oldUserId')), userId),
+        include: this.sequelize.models.mediaProgress
+      })
+    }
 
     if (user) userCache.set(user)
 
@@ -438,7 +457,7 @@ class User extends Model {
     if (cachedUser) return cachedUser
 
     const user = await this.findOne({
-      where: sequelize.where(sequelize.literal(`extraData->>"authOpenIDSub"`), sub),
+      where: sequelize.where(sequelize.literal(dialectFor(this.sequelize).jsonPathText('extraData', 'authOpenIDSub')), sub),
       include: this.sequelize.models.mediaProgress
     })
 
@@ -514,7 +533,8 @@ class User extends Model {
         email: DataTypes.STRING,
         pash: DataTypes.STRING,
         type: DataTypes.STRING,
-        token: DataTypes.STRING,
+        // TEXT: access-token JWTs can exceed varchar(255) on postgres.
+        token: DataTypes.TEXT,
         isActive: {
           type: DataTypes.BOOLEAN,
           defaultValue: false
