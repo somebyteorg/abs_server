@@ -80,7 +80,9 @@ class PlaybackSessionManager {
   async startSessionRequest(req, res, episodeId) {
     const deviceInfo = await this.getDeviceInfo(req, req.body?.deviceInfo)
     Logger.debug(`[PlaybackSessionManager] startSessionRequest for device ${deviceInfo.deviceDescription}`)
-    const { libraryItem, body: options } = req
+    const { libraryItem } = req
+    // Playback requests always use source files, including client transcode retries.
+    const options = { ...req.body, forceDirectPlay: true, forceTranscode: false }
     const session = await this.startSession(req.user, deviceInfo, libraryItem, episodeId, options)
     res.json(session.toJSONForClient(libraryItem))
   }
