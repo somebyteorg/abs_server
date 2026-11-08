@@ -37,6 +37,8 @@ export default function ({ $axios, store, $root, app }) {
     const code = parseInt(error.response && error.response.status)
     const message = error.response ? error.response.data || 'Unknown Error' : 'Unknown Error'
 
+    if (originalRequest.skipAuthRefresh) return Promise.reject(error)
+
     console.error('Axios error', code, message)
 
     // Handle 401 Unauthorized (token expired)

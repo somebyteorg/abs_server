@@ -616,7 +616,7 @@ export default {
 
     this.initLocalStorage()
 
-    this.checkVersionUpdate()
+    // this.checkVersionUpdate()
 
     this.loadTasks()
 

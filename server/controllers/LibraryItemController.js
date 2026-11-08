@@ -167,6 +167,8 @@ class LibraryItemController {
    * @param {Response} res
    */
   async download(req, res) {
+    return res.sendStatus(403)
+
     if (!req.user.canDownload) {
       Logger.warn(`User "${req.user.username}" attempted to download without permission`)
       return res.sendStatus(403)
@@ -409,6 +411,16 @@ class LibraryItemController {
     if (!libraryItemId) {
       return res.sendStatus(400)
     }
+
+    if (!isUUID(libraryItemId)) return res.sendStatus(400)
+    const resourceCoverPath = await Database.libraryItemModel.getCoverPath(libraryItemId)
+    if (!resourceCoverPath) return res.sendStatus(404)
+    if (global.XAccel) {
+      const encodedURI = encodeUriPath(global.XAccel + resourceCoverPath)
+      Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
+      return res.status(204).header({ 'X-Accel-Redirect': encodedURI }).send()
+    }
+    return res.redirect(302, resourceCoverPath)
 
     if (raw) {
       const coverPath = await Database.libraryItemModel.getCoverPath(libraryItemId)
@@ -989,11 +1001,13 @@ class LibraryItemController {
   async getLibraryFile(req, res) {
     const libraryFile = req.libraryFile
 
+    if (!libraryFile.metadata?.path) return res.sendStatus(404)
     if (global.XAccel) {
       const encodedURI = encodeUriPath(global.XAccel + libraryFile.metadata.path)
       Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
       return res.status(204).header({ 'X-Accel-Redirect': encodedURI }).send()
     }
+    return res.redirect(302, libraryFile.metadata.path)
 
     // Express does not set the correct mimetype for m4b files so use our defined mimetypes if available
     const audioMimeType = getAudioMimeTypeFromExtname(Path.extname(libraryFile.metadata.path))
@@ -1071,6 +1085,8 @@ class LibraryItemController {
    * @param {Response} res
    */
   async downloadLibraryFile(req, res) {
+    return res.sendStatus(403)
+
     const libraryFile = req.libraryFile
     const ua = uaParserJs(req.headers['user-agent'])
 
@@ -1134,9 +1150,12 @@ class LibraryItemController {
       Logger.error(`[LibraryItemController] No ebookFile for library item "${req.libraryItem.media.title}"`)
       return res.sendStatus(404)
     }
+    if (!ebookFile.metadata?.path) return res.sendStatus(404)
     const ebookFilePath = ebookFile.metadata.path
 
     Logger.info(`[LibraryItemController] User "${req.user.username}" requested download for item "${req.libraryItem.media.title}" ebook at "${ebookFilePath}"`)
+
+    return res.redirect(302, ebookFilePath)
 
     if (global.XAccel) {
       const encodedURI = encodeUriPath(global.XAccel + ebookFilePath)

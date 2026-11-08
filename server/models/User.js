@@ -93,6 +93,8 @@ class User extends Model {
     this.id
     /** @type {string} */
     this.username
+    /** @type {string|null} */
+    this.emos_id
     /** @type {string} */
     this.email
     /** @type {string} */
@@ -345,6 +347,95 @@ class User extends Model {
     return null
   }
 
+  /** Create or update an EMOS account without replacing its local id or user data. */
+  static async syncEmosUser(profile) {
+    const where = sequelize.where(sequelize.fn('LOWER', sequelize.col('emos_id')), sequelize.fn('LOWER', profile.emos_id))
+    const values = {
+      emos_id: profile.emos_id,
+      username: profile.username,
+      type: profile.type,
+      isActive: true,
+      permissions: {
+        download: profile.is_can_down,
+        update: false,
+        delete: false,
+        upload: false,
+        createEreader: false,
+        accessAllLibraries: true,
+        accessAllTags: true,
+        accessExplicitContent: profile.is_show_adult === true,
+        selectedTagsNotAccessible: false,
+        librariesAccessible: [],
+        itemTagsSelected: []
+      }
+    }
+    const lookup = { where, include: this.sequelize.models.mediaProgress }
+    let user = await this.findOne(lookup)
+    let created = false
+    if (!user) {
+      const id = uuidv4()
+      try {
+        user = await this.create({
+          ...values,
+          id,
+          email: null,
+          pash: null,
+          token: TokenManager.generateAccessToken({ id, username: values.username }),
+          bookmarks: [],
+          extraData: { seriesHideFromContinueListening: [] }
+        })
+        user.mediaProgresses = []
+        created = true
+      } catch (error) {
+        // Another login may have created the same EMOS account concurrently.
+        if (!(error instanceof sequelize.UniqueConstraintError)) throw error
+        user = await this.findOne(lookup)
+        if (!user) throw error
+      }
+    }
+    if (!created) {
+      if (user.username !== values.username) values.token = TokenManager.generateAccessToken({ id: user.id, username: values.username })
+      await user.update(values)
+    }
+    userCache.set(user)
+    SocketAuthority.adminEmitter(created ? 'user_added' : 'user_updated', user.toOldJSONForBrowser())
+    return user
+  }
+
+  /** Reuse an EMOS account as-is; only new accounts receive the default permissions. */
+  static async getOrCreateEmosUser({ user_id, username }) {
+    const where = sequelize.where(sequelize.fn('LOWER', sequelize.col('emos_id')), sequelize.fn('LOWER', user_id))
+    const lookup = { where, include: this.sequelize.models.mediaProgress }
+    let user = await this.findOne(lookup)
+    if (!user) {
+      const id = uuidv4()
+      try {
+        user = await this.create({
+          id,
+          emos_id: user_id,
+          username,
+          type: 'user',
+          email: null,
+          pash: null,
+          token: TokenManager.generateAccessToken({ id, username }),
+          isActive: true,
+          permissions: { ...this.getDefaultPermissionsForUserType('user'), download: false, accessExplicitContent: false },
+          bookmarks: [],
+          extraData: { seriesHideFromContinueListening: [] }
+        })
+        user.mediaProgresses = []
+        SocketAuthority.adminEmitter('user_added', user.toOldJSONForBrowser())
+      } catch (error) {
+        // Another login may have created the same EMOS account concurrently.
+        if (!(error instanceof sequelize.UniqueConstraintError)) throw error
+        user = await this.findOne(lookup)
+        if (!user) throw error
+      }
+    }
+    userCache.set(user)
+    return user
+  }
+
   /**
    * Get user by username case insensitive
    * @param {string} username
@@ -530,6 +621,7 @@ class User extends Model {
           primaryKey: true
         },
         username: DataTypes.STRING,
+        emos_id: { type: DataTypes.STRING(10), allowNull: true, validate: { len: [1, 10] } },
         email: DataTypes.STRING,
         pash: DataTypes.STRING,
         type: DataTypes.STRING,

@@ -250,12 +250,12 @@ class UserController {
       hasUpdates = true
     }
 
-    // Updating password
-    if (updatePayload.password) {
-      user.pash = await this.auth.localAuthStrategy.hashPassword(updatePayload.password)
-      shouldInvalidateJwtSessions = true
-      hasUpdates = true
-    }
+    // Updating password (disabled)
+    // if (updatePayload.password) {
+    //   user.pash = await this.auth.localAuthStrategy.hashPassword(updatePayload.password)
+    //   shouldInvalidateJwtSessions = true
+    //   hasUpdates = true
+    // }
 
     let hasPermissionsUpdates = false
     let updateLibrariesAccessible = updatePayload.librariesAccessible || updatePayload.permissions?.librariesAccessible

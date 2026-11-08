@@ -447,6 +447,8 @@ module.exports = {
    * @returns {Promise<object>}
    */
   async getFilterData(mediaType, libraryId) {
+    // API writes directly to the ABS database; rebuild filter data on every request.
+    /*
     const cachedFilterData = Database.libraryFilterData[libraryId]
     if (cachedFilterData) {
       const cacheElapsed = Date.now() - cachedFilterData.loadedAt
@@ -456,6 +458,7 @@ module.exports = {
         return cachedFilterData
       }
     }
+    */
     const start = Date.now() // Temp for checking load times
 
     const data = {
@@ -474,7 +477,7 @@ module.exports = {
       numIssues: 0
     }
 
-    const lastLoadedAt = cachedFilterData ? cachedFilterData.loadedAt : 0
+    // const lastLoadedAt = cachedFilterData ? cachedFilterData.loadedAt : 0
 
     if (mediaType === 'podcast') {
       // Check how many podcasts are in library to determine if we need to load all of the data
@@ -491,6 +494,7 @@ module.exports = {
         }
       })
 
+      /*
       // To reduce the cold-start load time, first check if any podcasts
       // have an "updatedAt" timestamp since the last time the filter
       // data was loaded. If so, we can skip loading all of the data.
@@ -525,8 +529,9 @@ module.exports = {
           return cachedFilterData
         }
       }
+      */
 
-      // Something has changed in the podcasts table, so reload all of the filter data for library
+      // Load the current filter data for the library.
       const findAll = process.env.QUERY_PROFILING ? profile(Database.podcastModel.findAll.bind(Database.podcastModel)) : Database.podcastModel.findAll.bind(Database.podcastModel)
       const podcasts = await findAll({
         include: {
@@ -575,6 +580,7 @@ module.exports = {
         }
       })
 
+      /*
       // To reduce the cold-start load time, first check if any library items, series,
       // or authors have an "updatedAt" timestamp since the last time the filter
       // data was loaded. If so, we can skip loading all of the data.
@@ -629,13 +635,14 @@ module.exports = {
           return cachedFilterData
         }
       }
+      */
 
-      // Store the counts for later comparison
+      // Include the current counts in the filter response.
       data.bookCount = bookCountFromDatabase
       data.seriesCount = seriesCountFromDatabase
       data.authorCount = authorCountFromDatabase
 
-      // Something has changed in one of the tables, so reload all of the filter data for library
+      // Load the current filter data for the library.
       const books = await Database.bookModel.findAll({
         include: {
           model: Database.libraryItemModel,
@@ -691,8 +698,8 @@ module.exports = {
     data.publishers = naturalSort([...data.publishers]).asc()
     data.publishedDecades = naturalSort([...data.publishedDecades]).asc()
     data.languages = naturalSort([...data.languages]).asc()
-    data.loadedAt = Date.now()
-    Database.libraryFilterData[libraryId] = data
+    // data.loadedAt = Date.now()
+    // Database.libraryFilterData[libraryId] = data
 
     Logger.debug(`Loaded filterdata in ${((Date.now() - start) / 1000).toFixed(2)}s`)
     return data

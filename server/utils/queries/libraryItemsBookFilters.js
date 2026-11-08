@@ -6,7 +6,9 @@ const authorFilters = require('./authorFilters')
 const ShareManager = require('../../managers/ShareManager')
 const { profile } = require('../profiler')
 const stringifySequelizeQuery = require('../stringifySequelizeQuery')
-const countCache = new Map()
+// API writes bypass Sequelize hooks in this process; expire counts so external changes become visible.
+const { LRUCache } = require('lru-cache')
+const countCache = new LRUCache({ max: 1000, ttl: 60_000 })
 
 module.exports = {
   /**
@@ -362,8 +364,9 @@ module.exports = {
     if (useCountCache) {
       const countCacheKey = stringifySequelizeQuery(findOptions)
       Logger.debug(`[LibraryItemsBookFilters] countCacheKey: ${countCacheKey}`)
-      if (!countCache.has(countCacheKey)) {
-        const count = await model.count(findOptions)
+      let count = countCache.get(countCacheKey)
+      if (count === undefined) {
+        count = await model.count(findOptions)
         countCache.set(countCacheKey, count)
       }
 
@@ -372,7 +375,7 @@ module.exports = {
 
       const rows = await model.findAll(findOptions)
 
-      return { rows, count: countCache.get(countCacheKey) }
+      return { rows, count }
     }
 
     findOptions.limit = limit || null

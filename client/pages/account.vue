@@ -4,32 +4,14 @@
       <h1 class="text-2xl">{{ $strings.HeaderAccount }}</h1>
 
       <div class="my-4">
-        <div class="flex -mx-2">
+        <div class="account-fields flex -mx-2">
           <div class="w-2/3 px-2">
-            <ui-text-input-with-label disabled :value="username" :label="$strings.LabelUsername" />
+            <ui-text-input-with-label disabled :value="username" :label="$strings.LabelUsername" input-class="h-10" />
           </div>
           <div class="w-1/3 px-2">
-            <ui-text-input-with-label disabled :value="usertype" :label="$strings.LabelAccountType" />
+            <ui-dropdown v-model="selectedLanguage" :items="$languageCodeOptions" :label="$strings.LabelLanguage" @input="updateLocalLanguage" />
           </div>
         </div>
-        <div class="py-4">
-          <p class="px-1 text-sm font-semibold">{{ $strings.LabelLanguage }}</p>
-          <ui-dropdown v-model="selectedLanguage" :items="$languageCodeOptions" small class="max-w-48" @input="updateLocalLanguage" />
-        </div>
-
-        <div class="w-full h-px bg-white/10 my-4" />
-
-        <p v-if="showChangePasswordForm" class="mb-4 text-lg">{{ $strings.HeaderChangePassword }}</p>
-        <form v-if="showChangePasswordForm" @submit.prevent="submitChangePassword">
-          <ui-text-input-with-label v-model="password" :disabled="changingPassword" type="password" :label="$strings.LabelPassword" class="my-2" />
-          <ui-text-input-with-label v-model="newPassword" :disabled="changingPassword" type="password" :label="$strings.LabelNewPassword" class="my-2" />
-          <ui-text-input-with-label v-model="confirmPassword" :disabled="changingPassword" type="password" :label="$strings.LabelConfirmPassword" class="my-2" />
-          <div class="flex items-center py-2">
-            <p v-if="isRoot" class="text-error py-2 text-xs">* {{ $strings.NoteChangeRootPassword }}</p>
-            <div class="grow" />
-            <ui-btn v-show="(password && newPassword && confirmPassword) || isRoot" type="submit" :loading="changingPassword" color="bg-success">{{ $strings.ButtonSubmit }}</ui-btn>
-          </div>
-        </form>
       </div>
 
       <div v-if="showEreaderTable">
@@ -127,10 +109,6 @@ export default {
   data() {
     return {
       loading: false,
-      password: null,
-      newPassword: null,
-      confirmPassword: null,
-      changingPassword: false,
       loggingOut: false,
       authSessions: [],
       authSessionsPage: 0,
@@ -162,18 +140,8 @@ export default {
     usertype() {
       return this.user.type
     },
-    isRoot() {
-      return this.usertype === 'root'
-    },
     isGuest() {
       return this.usertype === 'guest'
-    },
-    isPasswordAuthEnabled() {
-      const activeAuthMethods = this.$store.getters['getServerSetting']('authActiveAuthMethods') || []
-      return activeAuthMethods.includes('local')
-    },
-    showChangePasswordForm() {
-      return !this.isGuest && this.isPasswordAuthEnabled
     },
     showEreaderTable() {
       return this.usertype !== 'root' && this.usertype !== 'admin' && this.user.permissions?.createEreader
@@ -224,40 +192,6 @@ export default {
         })
         .finally(() => {
           this.loggingOut = false
-        })
-    },
-    resetForm() {
-      this.password = null
-      this.newPassword = null
-      this.confirmPassword = null
-    },
-    submitChangePassword() {
-      if (this.newPassword !== this.confirmPassword) {
-        return this.$toast.error(this.$strings.ToastUserPasswordMismatch)
-      }
-      if (this.password === this.newPassword) {
-        return this.$toast.error(this.$strings.ToastUserPasswordMustChange)
-      }
-      this.changingPassword = true
-      this.$axios
-        .$patch('/api/me/password', {
-          password: this.password,
-          newPassword: this.newPassword
-        })
-        .then(() => {
-          this.$toast.success(this.$strings.ToastUserPasswordChangeSuccess)
-          this.resetForm()
-        })
-        .catch((error) => {
-          console.error('Failed to change password', error)
-          let errorMessage = this.$strings.ToastUnknownError
-          if (error.response?.data && typeof error.response.data === 'string') {
-            errorMessage = error.response.data
-          }
-          this.$toast.error(errorMessage)
-        })
-        .finally(() => {
-          this.changingPassword = false
         })
     },
     addNewDeviceClick() {
@@ -383,3 +317,9 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.account-fields ::v-deep label {
+  display: block;
+}
+</style>

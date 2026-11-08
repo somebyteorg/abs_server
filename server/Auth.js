@@ -7,6 +7,7 @@ const Database = require('./Database')
 const Logger = require('./Logger')
 const TokenManager = require('./auth/TokenManager')
 const LocalAuthStrategy = require('./auth/LocalAuthStrategy')
+const EmosAuthStrategy = require('./auth/EmosAuthStrategy')
 const OidcAuthStrategy = require('./auth/OidcAuthStrategy')
 
 const RateLimiterFactory = require('./utils/rateLimiterFactory')
@@ -25,6 +26,7 @@ class Auth {
 
     this.tokenManager = new TokenManager()
     this.localAuthStrategy = new LocalAuthStrategy()
+    this.emosAuthStrategy = new EmosAuthStrategy()
     this.oidcAuthStrategy = new OidcAuthStrategy()
   }
 
@@ -109,6 +111,7 @@ class Auth {
    * Inializes all passportjs strategies and other passportjs ralated initialization.
    */
   async initPassportJs() {
+    this.emosAuthStrategy.init()
     // Check if we should load the local strategy (username + password login)
     if (global.ServerSettings.authActiveAuthMethods.includes('local')) {
       this.localAuthStrategy.init()
@@ -311,6 +314,15 @@ class Auth {
     return userResponse
   }
 
+  authenticateLogin(req, res, next) {
+    if (!this.emosAuthStrategy.isEnabled) return passport.authenticate('local')(req, res, next)
+    return passport.authenticate('emos', (error, user, info, status) => {
+      if (error) return next(error)
+      if (!user) return res.status(status || 401).send(info?.message || '登录失败')
+      req.logIn(user, (loginError) => loginError ? next(loginError) : next())
+    })(req, res, next)
+  }
+
   // #region Auth routes
   /**
    * Creates all (express) routes required for authentication.
@@ -318,8 +330,8 @@ class Auth {
    * @param {import('express').Router} router
    */
   async initAuthRoutes(router) {
-    // Local strategy login route (takes username and password)
-    router.post('/login', this.authRateLimiter, passport.authenticate('local'), async (req, res) => {
+    // EMOS supports username/password and token login; otherwise authenticate locally.
+    router.post('/login', this.authRateLimiter, this.authenticateLogin.bind(this), async (req, res) => {
       // Check if mobile app wants refresh token in response
       const returnTokens = req.headers['x-return-tokens'] === 'true'
 

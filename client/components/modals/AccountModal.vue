@@ -13,12 +13,12 @@
               <ui-text-input-with-label v-model.trim="newUser.username" :label="$strings.LabelUsername" />
             </div>
             <div class="w-1/2 px-2">
-              <ui-text-input-with-label v-if="!isEditingRoot" v-model="newUser.password" :label="isNew ? $strings.LabelPassword : $strings.LabelChangePassword" type="password" />
+              <ui-text-input-with-label v-if="isNew" v-model="newUser.password" :label="$strings.LabelPassword" type="password" />
               <ui-text-input-with-label v-else v-model.trim="newUser.email" :label="$strings.LabelEmail" />
             </div>
           </div>
           <div v-show="!isEditingRoot" class="flex py-2">
-            <div class="w-1/2 px-2">
+            <div v-if="isNew" class="w-1/2 px-2">
               <ui-text-input-with-label v-model.trim="newUser.email" :label="$strings.LabelEmail" />
             </div>
             <div class="px-2 w-52">
@@ -121,7 +121,6 @@
 
           <div class="flex pt-4 px-2">
             <ui-btn v-if="hasOpenIDLink" small :loading="unlinkingFromOpenID" color="bg-primary" type="button" class="mr-2" @click.stop="unlinkOpenID">{{ $strings.ButtonUnlinkOpenId }}</ui-btn>
-            <ui-btn v-if="isEditingRoot" small class="flex items-center" to="/account">{{ $strings.ButtonChangeRootPassword }}</ui-btn>
             <div class="grow" />
             <ui-btn color="bg-success" type="submit">{{ $strings.ButtonSubmit }}</ui-btn>
           </div>
@@ -294,9 +293,7 @@ export default {
     },
     submitUpdateAccount() {
       var account = { ...this.newUser }
-      if (!account.password || account.type === 'root') {
-        delete account.password
-      }
+      delete account.password
       if (account.type === 'root' && !account.isActive) return
 
       this.processing = true
@@ -372,7 +369,6 @@ export default {
         this.newUser = {
           username: this.account.username,
           email: this.account.email,
-          password: this.account.password,
           type: this.account.type,
           isActive: this.account.isActive,
           permissions: { ...this.account.permissions },

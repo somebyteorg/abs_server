@@ -164,6 +164,7 @@ class ShareController {
       Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
       return res.status(204).header({ 'X-Accel-Redirect': encodedURI }).send()
     }
+    return res.redirect(302, coverPath)
 
     res.sendFile(coverPath)
   }
@@ -198,6 +199,7 @@ class ShareController {
     if (!audioTrack) {
       return res.status(404).send('Track not found')
     }
+    if (!audioTrack.metadata?.path) return res.sendStatus(404)
     const audioTrackPath = audioTrack.metadata.path
 
     if (global.XAccel) {
@@ -205,6 +207,7 @@ class ShareController {
       Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
       return res.status(204).header({ 'X-Accel-Redirect': encodedURI }).send()
     }
+    return res.redirect(302, audioTrackPath)
 
     // Express does not set the correct mimetype for m4b files so use our defined mimetypes if available
     const audioMimeType = getAudioMimeTypeFromExtname(Path.extname(audioTrackPath))
@@ -224,6 +227,8 @@ class ShareController {
    * @param {Response} res
    */
   async downloadMediaItemShare(req, res) {
+    return res.sendStatus(403)
+
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }

@@ -102,11 +102,6 @@ export default {
           mediaType: 'podcast'
         },
         {
-          id: 'files',
-          title: this.$strings.HeaderFiles,
-          component: 'modals-item-tabs-files'
-        },
-        {
           id: 'match',
           title: this.$strings.HeaderMatch,
           component: 'modals-item-tabs-match'

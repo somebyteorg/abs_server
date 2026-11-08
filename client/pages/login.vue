@@ -1,13 +1,15 @@
 <template>
   <div id="page-wrapper" class="w-full h-screen overflow-y-auto">
-    <div class="absolute z-0 top-0 left-0 px-6 py-3">
+    <app-emos-login v-if="checkingLogin || emosToken" :sign-url="emosSignUrl" :token="emosToken" @authenticated="setUser" />
+
+    <div v-if="!checkingLogin && !emosToken" class="absolute z-0 top-0 left-0 px-6 py-3">
       <div class="flex items-center">
         <img src="~static/icon.svg" alt="Audiobookshelf Logo" class="w-10 min-w-10 h-10" />
         <h1 class="text-xl ml-4 hidden lg:block hover:underline">audiobookshelf</h1>
       </div>
     </div>
 
-    <div class="relative z-10 w-full flex h-full items-center justify-center">
+    <div v-if="!checkingLogin && !emosToken" class="relative z-10 w-full flex min-h-full items-center justify-center pt-20 pb-12">
       <div v-if="criticalError" class="w-full max-w-md rounded-sm border border-error/25 bg-error/10 p-4">
         <p class="text-center text-lg font-semibold">{{ $strings.MessageServerCouldNotBeReached }}</p>
       </div>
@@ -30,11 +32,9 @@
           </div>
         </form>
       </div>
-      <div v-else-if="isInit" class="w-full max-w-md px-8 pb-8 pt-4 lg:-mt-40">
-        <div class="bg-bg rounded-md shadow-lg border border-white/5 p-4">
-          <p class="text-2xl font-semibold text-center text-white mb-4">{{ $strings.HeaderLogin }}</p>
-
-          <div class="w-full h-px bg-white/10 my-4" />
+      <div v-else-if="isInit" class="w-full max-w-md px-6">
+        <div class="bg-primary/30 rounded-2xl shadow-xl border border-white/10 p-6 sm:p-8">
+          <p class="text-2xl font-semibold text-center text-white mb-8">{{ $strings.HeaderLogin }}</p>
 
           <p v-if="loginCustomMessage" class="py-2 default-style mb-2" v-html="loginCustomMessage"></p>
 
@@ -55,15 +55,19 @@
 
             <label class="text-xs text-gray-300 uppercase">{{ $strings.LabelPassword }}</label>
             <ui-text-input v-model.trim="password" type="password" autocomplete="current-password" :disabled="processing" class="w-full mb-3" inputName="password" />
-            <div class="w-full flex justify-end py-3">
-              <ui-btn type="submit" :disabled="processing" color="bg-primary" class="leading-none">{{ processing ? 'Checking...' : $strings.ButtonSubmit }}</ui-btn>
+            <div class="w-full flex items-stretch gap-3 mt-6">
+              <a v-if="emosSignUrl" :href="emosSignUrl" class="abs-btn relative flex flex-1 items-center justify-center gap-2 min-h-11 rounded-md border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white" @click="rememberEmosRedirect">
+                <img src="https://files.emos.best/files/base/logo/logo_1.jpg" alt="" aria-hidden="true" width="20" height="20" class="h-5 w-5 shrink-0 rounded-sm object-cover" />
+                <span>EMOS 快捷登录</span>
+              </a>
+              <ui-btn type="submit" :disabled="processing" :padding-x="3" color="bg-primary" class="flex-1 min-h-11 text-sm">{{ processing ? 'Checking...' : $strings.ButtonSubmit }}</ui-btn>
             </div>
           </form>
 
           <div v-if="login_local && login_openid" class="w-full h-px bg-white/10 my-4" />
 
-          <div class="w-full flex py-3">
-            <a v-if="login_openid" :href="openidAuthUri" class="w-full abs-btn outline-hidden rounded-md shadow-md relative border border-gray-600 text-center bg-primary text-white px-8 py-2 leading-none">
+          <div v-if="login_openid" class="w-full flex py-3">
+            <a :href="openidAuthUri" class="w-full abs-btn outline-hidden rounded-md shadow-md relative border border-gray-600 text-center bg-primary text-white px-8 py-2 leading-none">
               {{ openIDButtonText }}
             </a>
           </div>
@@ -76,11 +80,17 @@
 <script>
 export default {
   layout: 'blank',
+  head: {
+    meta: [{ hid: 'referrer', name: 'referrer', content: 'no-referrer' }]
+  },
   data() {
     return {
       error: null,
       criticalError: null,
       processing: false,
+      checkingLogin: true,
+      emosSignUrl: null,
+      emosToken: null,
       username: '',
       password: null,
       showInitScreen: false,
@@ -201,6 +211,10 @@ export default {
     },
     async submitForm() {
       this.error = null
+      if (this.emosSignUrl && (!this.username?.trim() || !this.password?.trim())) {
+        this.error = '用户名和密码不能为空'
+        return
+      }
       this.showNewAuthSystemMessage = false
       this.showNewAuthSystemAdminMessage = false
       this.processing = true
@@ -258,29 +272,38 @@ export default {
           this.processing = false
         })
     },
-    checkStatus() {
+    async checkStatus() {
+      this.checkingLogin = true
       this.processing = true
-      this.$axios
-        .$get('/status')
-        .then((data) => {
-          this.isInit = data.isInit
-          this.showInitScreen = !data.isInit
-          this.$setServerLanguageCode(data.language)
-          if (this.showInitScreen) {
-            this.ConfigPath = data.ConfigPath || ''
-            this.MetadataPath = data.MetadataPath || ''
-          } else {
-            this.authFormData = data.authFormData
-            this.updateLoginVisibility(data.authMethods || [])
-          }
-        })
-        .catch((error) => {
-          console.error('Status check failed', error)
-          this.criticalError = 'Status check failed'
-        })
-        .finally(() => {
-          this.processing = false
-        })
+      try {
+        const data = await this.$axios.$get('/status')
+        this.$setServerLanguageCode(data.language)
+        this.emosSignUrl = data.emosSignUrl || null
+        if (this.emosSignUrl && this.emosToken) return
+        if (!this.emosSignUrl) this.emosToken = null
+        if (localStorage.getItem('token') && await this.checkAuth()) return
+
+        this.isInit = data.isInit || !!this.emosSignUrl
+        this.showInitScreen = !this.isInit
+        if (this.showInitScreen) {
+          this.ConfigPath = data.ConfigPath || ''
+          this.MetadataPath = data.MetadataPath || ''
+        } else {
+          this.authFormData = data.authFormData
+          this.updateLoginVisibility(data.authMethods || [])
+        }
+      } catch {
+        this.criticalError = 'Status check failed'
+      } finally {
+        this.checkingLogin = false
+        this.processing = false
+      }
+    },
+    rememberEmosRedirect() {
+      const redirect = this.$route.query.redirect
+      if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+        sessionStorage.setItem('emos_abs_redirect', redirect)
+      }
     },
     updateLoginVisibility(authMethods) {
       if (this.$route.query?.error) {
@@ -292,7 +315,7 @@ export default {
         window.history.replaceState({ path: newurl.href }, '', newurl.href)
       }
 
-      if (authMethods.includes('local') || !authMethods.length) {
+      if (authMethods.includes('local') || authMethods.includes('emos') || !authMethods.length) {
         this.login_local = true
       } else {
         this.login_local = false
@@ -311,15 +334,19 @@ export default {
     }
   },
   async mounted() {
+    if ('token' in this.$route.query) {
+      const { token, ...query } = this.$route.query
+      this.emosToken = typeof token === 'string' ? token : null
+      const redirect = query.redirect || sessionStorage.getItem('emos_abs_redirect')
+      if (redirect) query.redirect = redirect
+      await this.$router.replace({ path: this.$route.path, query })
+    }
+
     // Token passed as query parameter after successful oidc login
     if (this.$route.query?.accessToken) {
       localStorage.setItem('token', this.$route.query.accessToken)
     }
-    if (localStorage.getItem('token')) {
-      if (await this.checkAuth()) return // if valid user no need to check status
-    }
-
-    this.checkStatus()
+    await this.checkStatus()
   }
 }
 </script>

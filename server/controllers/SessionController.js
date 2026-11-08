@@ -320,6 +320,7 @@ class SessionController {
       Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
       return res.status(204).header({ 'X-Accel-Redirect': encodedURI }).send()
     }
+    return res.redirect(302, audioTrack.metadata.path)
 
     // Express does not set the correct mimetype for m4b files so use our defined mimetypes if available
     const audioMimeType = getAudioMimeTypeFromExtname(Path.extname(audioTrack.metadata.path))

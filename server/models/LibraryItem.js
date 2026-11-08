@@ -944,22 +944,38 @@ class LibraryItem extends Model {
     return this.media.getTracklist(this.id, episodeId)
   }
 
+  getAudioFiles() {
+    const files = this.isBook ? this.media?.audioFiles : this.media?.podcastEpisodes?.map((episode) => episode.audioFile)
+    return (files || []).filter(Boolean)
+  }
+
   /**
    *
    * @param {string} ino
    * @returns {LibraryFile}
    */
   getLibraryFileWithIno(ino) {
+    const file = this.getAudioFiles().find((audioFile) => audioFile.ino === ino) || (this.isBook && this.media?.ebookFile?.ino === ino ? this.media.ebookFile : null)
+    return file ? new LibraryFile(file) : null
+
     const libraryFile = this.libraryFiles.find((lf) => lf.ino === ino)
     if (!libraryFile) return null
     return new LibraryFile(libraryFile)
   }
 
   getLibraryFiles() {
+    return this.getAudioFiles().map((file) => {
+      const libraryFile = new LibraryFile(file)
+      libraryFile.metadata.relPath ||= libraryFile.metadata.filename
+      return libraryFile
+    })
+
     return this.libraryFiles.map((lf) => new LibraryFile(lf))
   }
 
   getLibraryFilesJson() {
+    return this.getLibraryFiles().map((file) => file.toJSON())
+
     return this.libraryFiles.map((lf) => new LibraryFile(lf).toJSON())
   }
 
@@ -1021,7 +1037,7 @@ class LibraryItem extends Model {
       isInvalid: !!this.isInvalid,
       mediaType: this.mediaType,
       media: this.media.toOldJSONMinified(),
-      numFiles: this.libraryFiles.length,
+      numFiles: this.getAudioFiles().length,
       size: this.size
     }
   }

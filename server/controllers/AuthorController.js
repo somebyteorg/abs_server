@@ -11,6 +11,7 @@ const CoverManager = require('../managers/CoverManager')
 const AuthorFinder = require('../finders/AuthorFinder')
 
 const { reqSupportsWebp, isValidASIN, clampPositiveInt } = require('../utils/index')
+const { encodeUriPath } = require('../utils/fileUtils')
 
 const naturalSort = createNewSortInstance({
   comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare
@@ -394,6 +395,15 @@ class AuthorController {
     } = req
 
     const authorId = req.params.id
+
+    const imagePath = (await Database.authorModel.findByPk(authorId, { attributes: ['imagePath'] }))?.imagePath
+    if (!imagePath) return res.sendStatus(404)
+    if (global.XAccel) {
+      const encodedURI = encodeUriPath(global.XAccel + imagePath)
+      Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
+      return res.status(204).header({ 'X-Accel-Redirect': encodedURI }).send()
+    }
+    return res.redirect(302, imagePath)
 
     if (raw) {
       const author = await Database.authorModel.findByPk(authorId)

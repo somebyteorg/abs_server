@@ -2,7 +2,7 @@ const { Request, Response } = require('express')
 const Path = require('path')
 
 const Logger = require('../Logger')
-const { getAudioMimeTypeFromExtname } = require('../utils/fileUtils')
+const { getAudioMimeTypeFromExtname, encodeUriPath } = require('../utils/fileUtils')
 const SocketAuthority = require('../SocketAuthority')
 const Database = require('../Database')
 
@@ -217,6 +217,13 @@ class RssFeedManager {
       res.sendStatus(404)
       return
     }
+    if (global.XAccel) {
+      const encodedURI = encodeUriPath(global.XAccel + episodePath)
+      Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
+      return res.status(204).header({ 'X-Accel-Redirect': encodedURI }).send()
+    }
+    return res.redirect(302, episodePath)
+
     // Express does not set the correct mimetype for m4b files so use our defined mimetypes if available
     const audioMimeType = getAudioMimeTypeFromExtname(Path.extname(episodePath))
     if (audioMimeType) {
@@ -248,6 +255,13 @@ class RssFeedManager {
       res.sendStatus(404)
       return
     }
+
+    if (global.XAccel) {
+      const encodedURI = encodeUriPath(global.XAccel + feed.coverPath)
+      Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
+      return res.status(204).header({ 'X-Accel-Redirect': encodedURI }).send()
+    }
+    return res.redirect(302, feed.coverPath)
 
     const extname = Path.extname(feed.coverPath).toLowerCase().slice(1)
     res.type(`image/${extname}`)
