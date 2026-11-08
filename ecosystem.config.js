@@ -1,0 +1,31 @@
+module.exports = {
+  apps: [
+    {
+      name: 'abs-server',
+      script: 'dist-server/index.js',
+      instances: 1,
+      exec_mode: 'fork',
+      log_file: 'logs/combined.log',
+      out_file: 'logs/out.log',
+      error_file: 'logs/error.log',
+      log_date_format: 'YYYY-MM-DD',
+      merge_logs: false,
+      min_uptime: '10s',
+      max_restarts: 10,
+      max_memory_restart: '1024M',
+      watch: false,
+      autorestart: true,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3333,
+        HOST: '0.0.0.0',
+        SOURCE: 'emos',
+        USE_X_ACCEL: '/',
+        DB_DIALECT: 'postgres',
+        DATABASE_URL: 'postgres://postgres:postgres@127.0.0.1:5432/abs_server',
+        EMOS_URL: 'https://emos.best',
+        EMOS_URL_LINK: 'https://emos.best/api/sign?state=emos_abs_server',
+      },
+    },
+  ],
+}
