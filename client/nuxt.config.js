@@ -1,9 +1,10 @@
 const pkg = require('./package.json')
 
-const routerBasePath = process.env.ROUTER_BASE_PATH ?? '/audiobookshelf'
+const routerBasePath = '/web'
+const serverBasePath = process.env.ROUTER_BASE_PATH ?? '/audiobookshelf'
 const serverHostUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3333'
 const serverPaths = ['api/', 'public/', 'hls/', 'auth/', 'feed/', 'status', 'login', 'logout', 'init']
-const proxy = Object.fromEntries(serverPaths.map((path) => [`${routerBasePath}/${path}`, { target: process.env.NODE_ENV !== 'production' ? serverHostUrl : '/' }]))
+const proxy = Object.fromEntries(serverPaths.map((path) => [`${serverBasePath}/${path}`, { target: process.env.NODE_ENV !== 'production' ? serverHostUrl : '/' }]))
 
 module.exports = {
   // Disable server-side rendering: https://go.nuxtjs.dev/ssr-mode
@@ -11,14 +12,15 @@ module.exports = {
   target: 'static',
   dev: process.env.NODE_ENV !== 'production',
   env: {
-    serverUrl: serverHostUrl + routerBasePath,
+    serverUrl: serverHostUrl + serverBasePath,
     chromecastReceiver: 'FD1F76C5'
   },
   telemetry: false,
 
   publicRuntimeConfig: {
     version: pkg.version,
-    routerBasePath
+    routerBasePath,
+    serverBasePath
   },
 
   // Global page headers: https://go.nuxtjs.dev/config-head
@@ -74,7 +76,7 @@ module.exports = {
 
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
   axios: {
-    baseURL: routerBasePath,
+    baseURL: serverBasePath,
     progress: false
   },
 
@@ -92,6 +94,8 @@ module.exports = {
       name: 'Audiobookshelf',
       short_name: 'Audiobookshelf',
       display: 'standalone',
+      start_url: routerBasePath + '/?standalone=true',
+      scope: routerBasePath + '/',
       background_color: '#232323',
       icons: [
         {

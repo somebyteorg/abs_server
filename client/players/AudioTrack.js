@@ -1,5 +1,5 @@
 export default class AudioTrack {
-  constructor(track, sessionId, routerBasePath) {
+  constructor(track, sessionId, serverBasePath) {
     this.index = track.index || 0
     this.startOffset = track.startOffset || 0 // Total time of all previous tracks
     this.duration = track.duration || 0
@@ -9,7 +9,7 @@ export default class AudioTrack {
     this.metadata = track.metadata || {}
 
     this.sessionId = sessionId
-    this.routerBasePath = routerBasePath || ''
+    this.serverBasePath = serverBasePath || ''
     if (this.contentUrl?.startsWith('/hls')) {
       this.sessionTrackUrl = this.contentUrl
     } else {
@@ -24,13 +24,13 @@ export default class AudioTrack {
     if (process.env.NODE_ENV === 'development') {
       return `${process.env.serverUrl}${this.sessionTrackUrl}`
     }
-    return `${window.location.origin}${this.routerBasePath}${this.sessionTrackUrl}`
+    return `${window.location.origin}${this.serverBasePath}${this.sessionTrackUrl}`
   }
 
   /**
    * Used for LocalPlayer
    */
   get relativeContentUrl() {
-    return `${this.routerBasePath}${this.sessionTrackUrl}`
+    return `${this.serverBasePath}${this.sessionTrackUrl}`
   }
 }

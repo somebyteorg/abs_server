@@ -473,7 +473,7 @@ export default {
   beforeRouteLeave(to, from, next) {
     if (this.hasChanges) {
       next(false)
-      window.location = to.path
+      window.location = this.$router.resolve(to).href
     } else {
       next()
     }

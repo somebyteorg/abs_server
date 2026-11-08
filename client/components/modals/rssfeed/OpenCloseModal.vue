@@ -110,10 +110,10 @@ export default {
       return this.$store.getters['user/getIsAdminOrUp']
     },
     feedUrl() {
-      return this.currentFeed ? `${window.origin}${this.$config.routerBasePath}${this.currentFeed.feedUrl}` : ''
+      return this.currentFeed ? `${window.origin}${this.$config.serverBasePath}${this.currentFeed.feedUrl}` : ''
     },
     demoFeedUrl() {
-      return `${window.origin}${this.$config.routerBasePath}/feed/${this.newFeedSlug}`
+      return `${window.origin}${this.$config.serverBasePath}/feed/${this.newFeedSlug}`
     },
     isHttp() {
       return window.origin.startsWith('http://')

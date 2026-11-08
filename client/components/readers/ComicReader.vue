@@ -64,10 +64,6 @@ import { CompressedFile } from 'libarchive.js/src/compressed-file'
 const MAX_SCALE = 400
 const MIN_SCALE = 10
 
-Archive.init({
-  workerUrl: '/libarchive/worker-bundle.js'
-})
-
 export default {
   props: {
     libraryItem: {
@@ -233,7 +229,9 @@ export default {
       var buff = await this.$axios.$get(this.ebookUrl, {
         responseType: 'blob'
       })
-      const archive = await Archive.open(buff)
+      const archive = await Archive.open(buff, {
+        workerUrl: `${this.$config.routerBasePath}/libarchive/worker-bundle.js`
+      })
       const originalFilesObject = await archive.getFilesObject()
       // to support images in subfolders we need to flatten the object
       //   ref: https://github.com/advplyr/audiobookshelf/issues/811

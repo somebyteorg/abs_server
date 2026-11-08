@@ -187,10 +187,10 @@ export default {
           value: ''
         }
       ]
-      if (this.$config.routerBasePath) {
+      if (this.$config.serverBasePath) {
         options.push({
-          text: this.$config.routerBasePath,
-          value: this.$config.routerBasePath
+          text: this.$config.serverBasePath,
+          value: this.$config.serverBasePath
         })
       }
       return options
@@ -362,7 +362,7 @@ export default {
     init() {
       this.newAuthSettings = {
         ...this.authSettings,
-        authOpenIDSubfolderForRedirectURLs: this.authSettings.authOpenIDSubfolderForRedirectURLs === undefined ? this.$config.routerBasePath : this.authSettings.authOpenIDSubfolderForRedirectURLs
+        authOpenIDSubfolderForRedirectURLs: this.authSettings.authOpenIDSubfolderForRedirectURLs === undefined ? this.$config.serverBasePath : this.authSettings.authOpenIDSubfolderForRedirectURLs
       }
       this.enableLocalAuth = this.authMethods.includes('local')
       this.enableOpenIDAuth = this.authMethods.includes('openid')

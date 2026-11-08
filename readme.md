@@ -10,6 +10,6 @@
 
 - 移除 `libraryfiles` 使用 `audiofiles` 代替
 
-- 前端 移除版本提示
+- 前端地址修改为 `/web` 移除版本提示
 
 - 支持 emos 登录

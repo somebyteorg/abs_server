@@ -1,0 +1,3 @@
+/web /index.html 200
+/web/ /index.html 200
+/web/* /:splat 200

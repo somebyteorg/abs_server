@@ -95,7 +95,7 @@ export default {
       this.$axios
         .$get(`/api/backups/${this.selectedBackup.id}/apply`)
         .then(() => {
-          location.replace('/config/backups?backup=1')
+          location.replace(this.$router.resolve('/config/backups?backup=1').href)
         })
         .catch((error) => {
           console.error('Failed to apply backup', error)

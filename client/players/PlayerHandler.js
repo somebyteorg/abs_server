@@ -223,7 +223,7 @@ export default class PlayerHandler {
 
     console.log('[PlayerHandler] Preparing Session', session)
 
-    var audioTracks = session.audioTracks.map((at) => new AudioTrack(at, session.id, this.ctx.$config.routerBasePath))
+    var audioTracks = session.audioTracks.map((at) => new AudioTrack(at, session.id, this.ctx.$config.serverBasePath))
 
     this.ctx.playerLoading = true
     this.isHlsTranscode = true

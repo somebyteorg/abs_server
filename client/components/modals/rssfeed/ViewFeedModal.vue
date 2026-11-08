@@ -71,7 +71,7 @@ export default {
       return this.feed || {}
     },
     feedUrl() {
-      return this.feed ? `${window.origin}${this.$config.routerBasePath}${this.feed.feedUrl}` : ''
+      return this.feed ? `${window.origin}${this.$config.serverBasePath}${this.feed.feedUrl}` : ''
     }
   }
 }

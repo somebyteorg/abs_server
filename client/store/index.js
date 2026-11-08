@@ -28,7 +28,8 @@ export const state = () => ({
   openModal: null,
   innerModalOpen: false,
   lastBookshelfScrollData: {},
-  routerBasePath: '/'
+  routerBasePath: '/',
+  serverBasePath: ''
 })
 
 export const getters = {
@@ -128,8 +129,9 @@ export const actions = {
 }
 
 export const mutations = {
-  setRouterBasePath(state, rbp) {
-    state.routerBasePath = rbp
+  setBasePaths(state, { routerBasePath, serverBasePath }) {
+    state.routerBasePath = routerBasePath
+    state.serverBasePath = serverBasePath
   },
   setSource(state, source) {
     state.Source = source

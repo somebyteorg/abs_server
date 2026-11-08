@@ -325,6 +325,10 @@ class Server {
 
     const router = express.Router()
 
+    const webDistPath = Path.join(global.appRoot, 'client/dist')
+    app.use('/web', express.static(webDistPath))
+    app.get('/web/*', (req, res) => res.sendFile(Path.join(webDistPath, 'index.html')))
+
     // if RouterBasePath is set, modify all requests to include the base path
     app.use((req, res, next) => {
       const urlStartsWithRouterBasePath = req.url.startsWith(global.RouterBasePath)

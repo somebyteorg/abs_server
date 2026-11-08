@@ -397,7 +397,7 @@ export default {
           album: this.mediaMetadata.seriesName || '',
           artwork: [
             {
-              src: this.$store.getters['globals/getLibraryItemCoverSrc'](this.streamLibraryItem, '/Logo.png', true)
+              src: this.$store.getters['globals/getLibraryItemCoverSrc'](this.streamLibraryItem, `${this.$config.routerBasePath}/Logo.png`, true)
             }
           ],
           chapterInfo
