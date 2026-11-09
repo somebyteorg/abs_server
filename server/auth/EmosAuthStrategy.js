@@ -44,7 +44,12 @@ class EmosAuthStrategy extends passport.Strategy {
       }
       profile = await this.fetchUser('/server/abs/userLogin', {
         method: 'post',
-        data: { username, password, client_ip: requestIp.getClientIp(req) || req.ip || '' }
+        data: {
+          username,
+          password,
+          client_ip: requestIp.getClientIp(req) || req.ip || '',
+          ua: req.headers['user-agent'] || ''
+        }
       })
     }
     if (!profile) return
