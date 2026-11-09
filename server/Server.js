@@ -388,7 +388,7 @@ class Server {
         serverVersion: version,
         isInit: Database.hasRootUser,
         language: Database.serverSettings.language,
-        authMethods: this.auth.emosAuthStrategy.isEnabled ? ['emos'] : Database.serverSettings.authActiveAuthMethods,
+        authMethods: this.auth.emosAuthStrategy.isEnabled ? ['emos', 'local'] : Database.serverSettings.authActiveAuthMethods,
         emosSignUrl: this.auth.emosAuthStrategy.signUrl,
         authFormData: Database.serverSettings.authFormData
       }
